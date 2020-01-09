@@ -1,0 +1,131 @@
+// Copyright (c) of parts are held by the various contributors
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+package lxr
+
+// LXRHash holds one instance of a hash function with a specific seed and map size
+type LXRHash struct {
+	ByteMap     []byte // Integer Offsets
+	MapSize     uint64 // Size of the translation table
+	MapSizeBits uint64 // Size of the ByteMap in Bits
+	Passes      uint64 // Passes to generate the rand table
+	Seed        uint64 // An arbitrary number used to create the tables.
+	HashSize    uint64 // Number of bytes in the hash
+	verbose     bool
+}
+
+// Hash takes the arbitrary input and returns the resulting hash of length HashSize
+func (lx LXRHash) Hash(input []byte) []byte {
+	// Keep the byte intermediate results as int64 values until reduced.
+	hs := make([]uint64, lx.HashSize)
+	// as accumulates the state as we walk through applying the source data through the lookup map
+	// and combine it with the state we are building up.
+	var as = lx.Seed
+	// Since MapSize is specified in bits, the index mask is the size-1
+	mk := lx.MapSize - 1
+
+	B := func(v uint64) uint64 { return uint64(lx.ByteMap[v&mk]) }
+
+	w1, w2, w3 := 1, 2, 3
+
+	s := make([]byte, lx.HashSize)
+	copy(s[:], input)
+	src := s[:]
+	faststep := func(v2 uint64, idx uint64) {
+		as = as<<17 ^ as>>1 ^ v2
+		as = as<<23 ^ as>>1 ^ uint64(input[w1%len(input)]) ^ v2<<8
+		as = as<<13 ^ as>>1 ^ uint64(input[w2%len(input)]) ^ v2<<16
+		as = as<<11 ^ as>>1 ^ uint64(input[w3%len(input)]) ^ v2<<24
+		src[idx] ^= byte(as)
+		w1 += 7
+		w2 += 3
+		w3 += 11
+	}
+	if len(src) > int(lx.HashSize) {
+		src = src[:lx.HashSize]
+	}
+	// Define a function to move the state by one byte.  This is not intended to be fast
+	// Requires the previous byte read to process the next byte read.  Forces serial evaluation
+	// and removes the possibility of scheduling byte access.
+	//
+	// (Note that use of _ = 0 in lines below are to keep go fmt from messing with comments on the right of the page)
+	step := func(v2 uint64, idx uint64) {
+		as = as<<13 ^ as>>1 ^ B(v2^as)
+		as = as<<23 ^ as>>5 ^ B(v2^as)
+		as = as<<17 ^ as>>3 ^ B(v2^as)
+		as = as<<19 ^ as>>7 ^ B(v2^as)
+		as = as<<11 ^ as>>1 ^ B(v2^as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		as = as<<23 ^ as>>5 ^ B(as)
+		as = as<<17 ^ as>>3 ^ B(as)
+		as = as<<19 ^ as>>7 ^ B(as)
+		as = as<<11 ^ as>>1 ^ B(as)
+		hs[idx%lx.HashSize] ^= as
+	}
+
+	idx := uint64(0)
+	// Fast spin to prevent caching state
+	for _, v2 := range src {
+		if idx >= lx.HashSize { // Use an if to avoid modulo math
+			idx = 0
+		}
+		faststep(uint64(v2), idx)
+		idx++
+	}
+
+	idx = 0
+	// Actual work to compute the hash
+	for _, v2 := range src {
+		if idx >= lx.HashSize { // Use an if to avoid modulo math
+			idx = 0
+		}
+		step(uint64(v2), idx)
+		idx++
+	}
+
+	// Reduction pass
+	// Done by Interating over hs[] to produce the bytes[] hash
+	//
+	// At this point, we have HBits of state in hs.  We need to reduce them down to a byte,
+	// And we do so by doing a bit more bitwise math, and mapping the values through our byte map.
+
+	bytes := make([]byte, lx.HashSize)
+	// Roll over all the hs (one int64 value for every byte in the resulting hash) and reduce them to byte values
+	for i := len(hs) - 1; i >= 0; i-- {
+		step(hs[i], uint64(i))      // Step the hash functions and then
+		bytes[i] = byte(as ^ hs[i]) // Xor two resulting sequences
+	}
+
+	// Return the resulting hash
+	return bytes
+}

@@ -18,15 +18,17 @@ var prt chan string
 
 var LX *lxr.LXRHash
 
-func mine(useLXR bool, data []byte) uint64 {
+func mine(useLXR bool, src []byte) uint64 {
 
 	cd := uint64(0)
-	dlen := len(data)
 	for i := 0; ; i++ {
-		data = data[:dlen]
+		var da []byte
 		for b := i; b > 0; b = b >> 8 {
-			data = append(data, byte(b))
+			da = append(da, byte(b))
 		}
+
+		data := append(da, src...)
+
 		var hash []byte
 		if useLXR {
 			hash = LX.Hash(data)
@@ -98,15 +100,9 @@ func main() {
 	}
 
 	prt = make(chan string, 500)
-	go mine(hash, []byte("000000000200000000020000000002000"))
-	go mine(hash, []byte("000000000200000000020000000002001"))
-	go mine(hash, []byte("000000000200000000020000000002002"))
-	go mine(hash, []byte("000000000200000000020000000002003"))
+	s := sha256.Sum256([]byte("one test"))
 
-	go mine(hash, []byte("000000000200000000020000000002004"))
-	go mine(hash, []byte("000000000200000000020000000002005"))
-	go mine(hash, []byte("000000000200000000020000000002006"))
-	go mine(hash, []byte("000000000200000000020000000002006"))
+	go mine(hash, s[:])
 
 	for {
 		select {

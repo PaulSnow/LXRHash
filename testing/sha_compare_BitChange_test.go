@@ -19,7 +19,7 @@ func TestBitChange(t *testing.T) {
 		go BitChangeTest()
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(200000 * time.Second)
 
 }
 

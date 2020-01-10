@@ -12,7 +12,6 @@ import (
 )
 
 var total uint64
-var now = time.Now()
 
 var prt chan string
 
@@ -20,6 +19,7 @@ var LX *lxr.LXRHash
 
 func mine(useLXR bool, src []byte) uint64 {
 
+	now := time.Now()
 	cd := uint64(0)
 	for i := 0; ; i++ {
 		var da []byte
@@ -104,6 +104,7 @@ func main() {
 
 	go mine(hash, s[:])
 
+	now := time.Now()
 	for {
 		select {
 		case s := <-prt:

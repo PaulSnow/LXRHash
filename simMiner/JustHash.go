@@ -21,6 +21,10 @@ func mine(useLXR bool, src []byte) uint64 {
 
 	now := time.Now()
 	cd := uint64(0)
+
+	var hashes [][]byte
+	rounds := 256
+
 	for i := 0; ; i++ {
 		var da []byte
 		for b := i; b > 0; b = b >> 8 {
@@ -29,28 +33,37 @@ func mine(useLXR bool, src []byte) uint64 {
 
 		data := append(da, src...)
 
-		var hash []byte
-		if useLXR {
-			hash = LX.Hash(data)
-		} else {
-			h := sha256.Sum256(data)
-			hash = h[:]
-		}
+		hashes = append(hashes, data)
 
-		total++
+		if LX.Version != 2 || len(hashes)>= rounds {
+			data := hashes[0]
+			var results [][]byte
+			if useLXR {
+				results = LX.Batch(hashes)
+			} else {
+				h := sha256.Sum256(data)
+				results = append(results,h[:])
+			}
 
-		d := uint64(0)
-		for i := 0; i < 8; i++ {
-			d = d<<8 + uint64(hash[i])
-		}
-		if cd < d {
-			cd = d
-			running := time.Since(now)
-			hps := float64(total) / running.Seconds()
-			prt <- fmt.Sprintf("%10d %16x %8x %10.0f hps\n", total, cd, i, hps)
+			total+= uint64(len(results))
 
+			for _,hash := range results {
+				d := uint64(0)
+				for i := 0; i < 8; i++ {
+					d = d<<8 + uint64(hash[i])
+				}
+				if cd < d {
+					cd = d
+					running := time.Since(now)
+					hps := float64(total) / running.Seconds()
+					prt <- fmt.Sprintf("%10d %16x %8x %10.0f hps\n", total, cd, i, hps)
+
+				}
+			}
+			hashes = hashes[:0]
 		}
 	}
+
 	return cd
 }
 

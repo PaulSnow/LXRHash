@@ -105,21 +105,3 @@ func (lx LXRHash) Hash2(input []byte) []byte {
 }
 
 
-func (lx LXRHash) Batch (src [][]) {
-	var hashes [] batchState
-	for _,s := range src {
-		bs := new(batchState)
-		hashes = append(hashes, bs)
-		bs.Init(lx,s)
-	}
-
-	// The following loop assumes that the hashSize and src are the same length.  This is true
-	// for how we are currently using LXRHash.
-	for i := uint64(0); i < 3; i++ { // Make some passes through the source bytes
-		for j, b := range src {
-			for _, bs := range hashes {
-				bs.Step()
-			}
-		}
-	}
-}

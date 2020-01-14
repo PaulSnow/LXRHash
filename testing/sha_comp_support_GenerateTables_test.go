@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	lxr "github.com/pegnet/LXRHash"
+	lxr "github.com/PaulSnow/LXRHash"
 )
 
 // Create all the tables for a range of parameters for the LXRHash

@@ -4,17 +4,6 @@ package lxr
 
 import "crypto/sha256"
 
-// LXRHash holds one instance of a hash function with a specific seed and map size
-type LXRHash struct {
-	ByteMap     []byte // Integer Offsets
-	MapSize     uint64 // Size of the translation table
-	MapSizeBits uint64 // Size of the ByteMap in Bits
-	Passes      uint64 // Passes to generate the rand table
-	Seed        uint64 // An arbitrary number used to create the tables.
-	HashSize    uint64 // Number of bytes in the hash
-	verbose     bool
-}
-
 type batchState struct {
 	src []byte
 	lx  LXRHash
@@ -63,7 +52,7 @@ func (b batchState) Step(j int, v byte) {
 // Note Use of _ = 0 statements to keep lines one would leave blank, but would screw up comments on rt with go fmt
 
 // Hash takes the arbitrary input and returns the resulting hash of length HashSize
-func (lx LXRHash) Hash(input []byte) []byte {
+func (lx LXRHash) Hash2(input []byte) []byte {
 	hb := make([]uint64, lx.HashSize)                  // Each return byte is uint64 until the end (more state)
 	var as = lx.Seed                                   // "accumulated state".  Gets modified as we go
 	mk := lx.MapSize - 1                               // Mask for the mapSize which must be a power of 2
@@ -113,4 +102,24 @@ func (lx LXRHash) Hash(input []byte) []byte {
 	}
 
 	return b[:]
+}
+
+
+func (lx LXRHash) Batch (src [][]) {
+	var hashes [] batchState
+	for _,s := range src {
+		bs := new(batchState)
+		hashes = append(hashes, bs)
+		bs.Init(lx,s)
+	}
+
+	// The following loop assumes that the hashSize and src are the same length.  This is true
+	// for how we are currently using LXRHash.
+	for i := uint64(0); i < 3; i++ { // Make some passes through the source bytes
+		for j, b := range src {
+			for _, bs := range hashes {
+				bs.Step()
+			}
+		}
+	}
 }

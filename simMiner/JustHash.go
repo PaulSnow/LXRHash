@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	lxr "github.com/pegnet/LXRHash"
+	lxr "github.com/PaulSnow/LXRHash"
 )
 
 var total uint64
@@ -58,10 +58,11 @@ func main() {
 
 	leave := func() {
 		fmt.Println("Usage:\n\n" +
-			"simMiner <hash> [bits]\n\n" +
+			"simMiner <hash> [bits] [version=1 or 2] \n\n" +
 			"<hash> is equal to LXRHash to sim mine LXRHash\n" +
 			"<hash> is equal to Sha256 to sim mine Sha256\n" +
-			"[bits] defaults to 30, but lower numbers can be quicker to initialize")
+			"[bits] defaults to 30, but lower numbers can be quicker to initialize\n+" +
+			"[version] 1 (or nothing) run the oringional hash, 2 the new hash")
 		os.Exit(0)
 	}
 
@@ -76,8 +77,11 @@ func main() {
 	}
 
 	bits := lxr.MapSizeBits
+
+	version := "original"
+
 	if hash {
-		if len(os.Args) == 3 {
+		if len(os.Args) >= 3 {
 			b, err := strconv.Atoi(os.Args[2])
 			if err != nil {
 				fmt.Println(err)
@@ -91,10 +95,22 @@ func main() {
 
 		LX = new(lxr.LXRHash)
 		LX.Init(lxr.Seed, bits, lxr.HashSize, lxr.Passes)
+		LX.Version = 1
+		if len(os.Args) > 3 {
+			v, err := strconv.Atoi(os.Args[3])
+			if err != nil || v < 1 || v > 2 {
+				fmt.Println(err)
+				leave()
+			}
+			LX.Version = v
+			if v == 2 {
+				version = "new"
+			}
+		}
 	}
 
 	if hash {
-		fmt.Println("Using LXRHash with a ", bits, " bit addressable ByteMap")
+		fmt.Println("Using LXRHash with a ", bits, " bit addressable ByteMap ", version)
 	} else {
 		fmt.Println("Using Sha256")
 	}

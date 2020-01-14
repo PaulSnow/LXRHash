@@ -1,6 +1,6 @@
 package testing_test
 
-import lxr "github.com/pegnet/LXRHash"
+import lxr "github.com/PaulSnow/LXRHash"
 
 const (
 	Seed        = uint64(0xFAFAECECFAFAECEC) // The seed defines a "hash space".
